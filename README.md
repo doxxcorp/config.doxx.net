@@ -334,6 +334,146 @@ Settings > Privacy & Security > Certificates > View Certificates > Import
 
 ---
 
+## DNS Infrastructure
+
+doxx.net runs its own global DNS system. Understanding it is key to using domains and the VPN correctly.
+
+### Three DNS Layers
+
+#### 1. VPN Recursive DNS (internal, VPN-only)
+
+Only accessible when connected via WireGuard. Provides personalized DNS blocking, DNSSEC validation, and resolves all `.doxx` ecosystem TLDs.
+
+| Address | Protocol |
+|---------|----------|
+| `10.10.10.10` | UDP/TCP DNS (IPv4) |
+| `fd53::` | UDP/TCP DNS (IPv6) |
+
+These are set automatically when you use the WireGuard config from the `wireguard` endpoint.
+
+#### 2. Public Recursive DNS (anyone on the internet)
+
+Resolves both standard internet domains AND all doxx.net ecosystem TLDs. Available to anyone, not just VPN users.
+
+| Address | Protocol |
+|---------|----------|
+| `207.207.200.200` | UDP/TCP DNS (IPv4) |
+| `207.207.201.201` | UDP/TCP DNS (IPv4) |
+| `2602:f5c1::` | UDP/TCP DNS (IPv6 Americas) |
+| `2a11:46c0::` | UDP/TCP DNS (IPv6 Europe) |
+| `https://doxx.net/` | DoH (DNS-over-HTTPS) |
+| `doxx.net:853` | DoT (DNS-over-TLS) |
+
+```bash
+# Resolve a .doxx domain from anywhere on the internet (no VPN needed)
+dig A mysite.doxx @207.207.200.200 +short
+
+# Or use DoH
+curl -s -H "accept: application/dns-json" "https://doxx.net/dns-query?name=mysite.doxx&type=A"
+```
+
+#### 3. Authoritative DNS (for hosting domains)
+
+These are the nameservers you point your domain registrar to when importing external domains. They also serve as the root authority for all `.doxx` ecosystem TLDs.
+
+| Nameserver | IPv4 | IPv6 |
+|------------|------|------|
+| `a.root-dx.net` | `207.207.200.53`, `207.207.201.53` | `2602:f5c1::53`, `2a11:46c0::53` |
+| `a.root-dx.com` | `207.207.200.53`, `207.207.201.53` | `2602:f5c1::53`, `2a11:46c0::53` |
+| `a.root-dx.org` | `207.207.200.53`, `207.207.201.53` | `2602:f5c1::53`, `2a11:46c0::53` |
+
+### Resolving .doxx Domains Without the VPN
+
+You don't need to be on the VPN to resolve `.doxx`, `.crypto`, `.x`, or any doxx.net TLD. Use the public recursive DNS:
+
+```bash
+# Method 1: Direct DNS query
+dig A mysite.doxx @207.207.200.200 +short
+
+# Method 2: Configure your system resolver
+# Add to /etc/resolv.conf (Linux) or System Preferences > Network > DNS (macOS):
+# nameserver 207.207.200.200
+# nameserver 207.207.201.201
+
+# Method 3: Use Secure DNS (DoH) with your personalized blocking
+# First create a Secure DNS hash via the API:
+curl -s -X POST https://config.doxx.net/v1/ \
+  -d "public_dns_create_hash=1&token=$TOKEN&tunnel_token=$TUNNEL" | jq .
+# Returns: {"host_hash": "gl6nqcbyhsau", "doh_url": "https://gl6nqcbyhsau.sdns.doxx.net/dns-query"}
+
+# Then configure your browser/OS to use that DoH URL
+# This gives you your VPN's DNS blocking settings without being on the VPN
+
+# Method 4: In your application code
+# Just point DNS queries to 207.207.200.200 for any .doxx domain resolution
+```
+
+### Importing External Domains
+
+When you import a `.com`, `.net`, `.org` (etc.) domain, you need to:
+
+1. Get your verification code: `get_domain_validation`
+2. Set a TXT record at your current DNS provider: `_doxx-verify.yourdomain.com` with the code
+3. Import the domain: `import_domain`
+4. **Update your registrar's nameservers to:**
+
+```
+a.root-dx.net
+a.root-dx.com
+a.root-dx.org
+```
+
+DNS propagation for nameserver changes takes up to 48 hours.
+
+### Verifying DNS
+
+```bash
+# Check if your domain is live on doxx.net authoritative DNS
+dig A mysite.doxx @a.root-dx.net +short
+dig A mysite.doxx @a.root-dx.com +short
+dig A mysite.doxx @a.root-dx.org +short
+
+# Check via public recursive DNS
+dig A mysite.doxx @207.207.200.200 +short
+
+# Check via VPN DNS (must be connected)
+dig A mysite.doxx @10.10.10.10 +short
+
+# Check SOA (zone exists?)
+dig SOA mysite.doxx @a.root-dx.net +short
+
+# Check all records
+dig ANY mysite.doxx @a.root-dx.net
+```
+
+### Secure DNS (DoH/DoT) with Personalized Blocking
+
+Create a Secure DNS hash to get your tunnel's DNS blocking settings available via DoH/DoT, usable from any device (no VPN required).
+
+```bash
+# Create a Secure DNS hash
+curl -s -X POST $API -d "public_dns_create_hash=1&token=$TOKEN&tunnel_token=$TUNNEL" | jq .
+```
+
+```json
+{
+  "status": "success",
+  "host_hash": "gl6nqcbyhsau",
+  "doh_url": "https://gl6nqcbyhsau.sdns.doxx.net/dns-query",
+  "dot_host": "gl6nqcbyhsau.sdns.doxx.net"
+}
+```
+
+Configure on any device:
+- **DoH (DNS-over-HTTPS):** `https://gl6nqcbyhsau.sdns.doxx.net/dns-query`
+- **DoT (DNS-over-TLS):** `gl6nqcbyhsau.sdns.doxx.net` on port 853
+- **iOS:** Settings > General > VPN & Device Management > DNS > add DoH URL
+- **Android:** Settings > Network > Private DNS > enter DoT hostname
+- **Chrome:** Settings > Security > Use secure DNS > Custom > enter DoH URL
+- **Firefox:** Settings > Network > DNS over HTTPS > Custom > enter DoH URL
+
+---
+
 ## Error Handling
 
 All errors return:
