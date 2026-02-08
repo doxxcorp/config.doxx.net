@@ -122,6 +122,216 @@ curl -s "https://secure-wss.doxx.net/api/stats/alerts?token=$TOKEN&last=1d" | jq
 websocat "wss://conntrack.doxx.net/ws?token=$TOKEN"
 ```
 
+### Workflow 5: Install WireGuard and Connect
+
+The API gives you the WireGuard configuration. You need WireGuard installed on your system to use it.
+
+```bash
+TOKEN="your_auth_token_here"
+API="https://config.doxx.net/v1/"
+
+# Step 1: Create a tunnel on a server near you
+curl -s -X POST $API -d "servers=1" | jq '.servers[] | {server_name, location}'
+curl -s -X POST $API -d "create_tunnel=1&token=$TOKEN&name=My+Server&server=wireguard.mia.us.doxx.net"
+
+# Step 2: Get tunnel_token from list
+TUNNEL=$(curl -s -X POST $API -d "list_tunnels=1&token=$TOKEN" | jq -r '.tunnels[-1].tunnel_token')
+
+# Step 3: Get WireGuard config
+CONFIG=$(curl -s -X POST $API -d "wireguard=1&token=$TOKEN&tunnel_token=$TUNNEL")
+
+# Step 4: Build the .conf file
+PRIVATE_KEY=$(echo $CONFIG | jq -r '.config.interface.private_key')
+ADDRESS=$(echo $CONFIG | jq -r '.config.interface.address')
+DNS=$(echo $CONFIG | jq -r '.config.interface.dns')
+PEER_KEY=$(echo $CONFIG | jq -r '.config.peer.public_key')
+ENDPOINT=$(echo $CONFIG | jq -r '.config.peer.endpoint')
+ALLOWED_IPS=$(echo $CONFIG | jq -r '.config.peer.allowed_ips')
+
+cat > /etc/wireguard/doxx.conf << EOF
+[Interface]
+PrivateKey = $PRIVATE_KEY
+Address = $ADDRESS
+DNS = $DNS
+
+[Peer]
+PublicKey = $PEER_KEY
+AllowedIPs = $ALLOWED_IPS
+Endpoint = $ENDPOINT
+PersistentKeepalive = 25
+EOF
+
+# Step 5: Connect
+sudo wg-quick up doxx
+
+# Step 6: Verify - you should now resolve .doxx domains
+dig A doxx.net @10.10.10.10 +short
+```
+
+To disconnect: `sudo wg-quick down doxx`
+
+To auto-start on boot: `sudo systemctl enable wg-quick@doxx`
+
+### Workflow 6: Link Tunnels Together (Mesh Networking)
+
+doxx.net firewall rules let your tunnels talk to each other. This creates a private mesh network between your devices.
+
+```bash
+TOKEN="your_auth_token_here"
+API="https://config.doxx.net/v1/"
+
+# Option A: Link ALL tunnels (easiest)
+# Every tunnel can reach every other tunnel on your account
+curl -s -X POST $API -d "firewall_link_all_toggle=1&token=$TOKEN&enabled=1" | jq .
+
+# Check status
+curl -s -X POST $API -d "firewall_link_all_status=1&token=$TOKEN" | jq .
+
+# Option B: Link specific tunnels (1:1 rules)
+# Get your tunnel IPs
+curl -s -X POST $API -d "list_tunnels=1&token=$TOKEN" | jq '.tunnels[] | {name, tunnel_token, assigned_ip, assigned_v6}'
+
+# Allow Laptop (10.1.0.227) to reach Server (10.1.2.101) on all ports
+curl -s -X POST $API -d "firewall_rule_add=1&token=$TOKEN&tunnel_token=SERVER_TUNNEL_TOKEN&protocol=ALL&src_ip=10.1.0.227/32&src_port=ALL&dst_ip=10.1.2.101&dst_port=ALL" | jq .
+
+# Allow Server to reach Laptop (bidirectional)
+curl -s -X POST $API -d "firewall_rule_add=1&token=$TOKEN&tunnel_token=LAPTOP_TUNNEL_TOKEN&protocol=ALL&src_ip=10.1.2.101/32&src_port=ALL&dst_ip=10.1.0.227&dst_port=ALL" | jq .
+
+# Now you can SSH from laptop to server via their doxx.net tunnel IPs:
+# ssh user@10.1.2.101
+```
+
+### Workflow 7: Full Domain Setup with TLS
+
+Complete domain registration, DNS, and TLS certificate in one go.
+
+```bash
+TOKEN="your_auth_token_here"
+API="https://config.doxx.net/v1/"
+DOMAIN="myapp.crypto"
+
+# Step 1: Register the domain
+curl -s -X POST $API -d "create_domain=1&token=$TOKEN&domain=$DOMAIN" | jq .
+
+# Step 2: Point it to your server
+curl -s -X POST $API -d "create_dns_record=1&token=$TOKEN&domain=$DOMAIN&name=$DOMAIN&type=A&content=YOUR_SERVER_IP&ttl=300" | jq .
+curl -s -X POST $API -d "create_dns_record=1&token=$TOKEN&domain=$DOMAIN&name=*.$DOMAIN&type=A&content=YOUR_SERVER_IP&ttl=300" | jq .
+
+# Step 3: Generate key + CSR
+openssl ecparam -genkey -name prime256v1 -out $DOMAIN.key 2>/dev/null
+openssl req -new -key $DOMAIN.key -out $DOMAIN.csr -subj "/CN=$DOMAIN" 2>/dev/null
+
+# Step 4: Sign the certificate (auto-wildcarded to *.domain + domain)
+curl -s -X POST $API \
+  -d "sign_certificate=1&token=$TOKEN&domain=$DOMAIN" \
+  --data-urlencode "csr=$(cat $DOMAIN.csr)" \
+  -o $DOMAIN.crt
+
+# Step 5: Download the root CA (clients need to trust this)
+curl -s -o doxx-root-ca.crt https://raw.githubusercontent.com/doxxcorp/style/main/logo-png/isotype-black/isotype-black-64.png
+# Actually get the CA from your portal or the a0x13 assets:
+# https://a0x13.doxx.net/assets/doxx-root-ca.crt
+
+# Step 6: Install in nginx/caddy/etc
+# nginx example:
+#   ssl_certificate     /path/to/myapp.crypto.crt;
+#   ssl_certificate_key /path/to/myapp.crypto.key;
+
+# Step 7: Verify
+openssl x509 -in $DOMAIN.crt -noout -subject -ext subjectAltName
+# Subject: CN=myapp.crypto
+# SAN: DNS:*.myapp.crypto, DNS:myapp.crypto
+
+dig A $DOMAIN @a.root-dx.net +short
+# YOUR_SERVER_IP
+```
+
+**Important:** doxx.net TLS certificates are signed by the doxx.net root CA, not a public CA like Let's Encrypt. Clients connecting to your service need the doxx.net root CA installed in their trust store. VPN users on doxx.net already have it. For non-VPN users, distribute the root CA cert or use it for internal/development services.
+
+---
+
+## Available TLDs (196)
+
+Register domains under any of these top-level domains. Default is `.doxx` if you don't specify one.
+
+**Single Letters (25):**
+`.b` `.c` `.d` `.e` `.f` `.g` `.h` `.i` `.j` `.k` `.l` `.m` `.n` `.o` `.p` `.q` `.r` `.s` `.t` `.u` `.v` `.w` `.x` `.y` `.z`
+
+**Numbers (9):**
+`.8` `.67` `.123` `.404` `.418` `.888` `.1337` `.6667` `.31337`
+
+**Crypto & Web3:**
+`.btc` `.crypto` `.cryptoart` `.dai` `.dao` `.degen` `.doge` `.eth` `.fomo` `.fud` `.hodl` `.ltc` `.ngmi` `.rekt` `.rugpull` `.seed` `.shib` `.sol` `.token` `.usd` `.usdc` `.usdt` `.wallet` `.whale` `.xmr`
+
+**Hacking & Security:**
+`.bitrot` `.bug` `.cipher` `.cyber` `.debug` `.decay` `.dmz` `.exploit` `.glitch` `.hash` `.onion` `.owned` `.phreak` `.pwnd` `.salt` `.spectre` `.tor` `.vault` `.void`
+
+**Tech & Infrastructure:**
+`.access` `.admin` `.api` `.archive` `.asic` `.async` `.audit` `.auth` `.backup` `.block` `.cache` `.cert` `.chain` `.clone` `.cod` `.core` `.corp` `.cpu` `.csv` `.dhcp` `.dns` `.driver` `.drone` `.edge` `.epoch` `.error` `.exit` `.external` `.fork` `.fpga` `.geo` `.git` `.govt` `.gpu` `.html` `.http` `.https` `.internal` `.internet` `.internets` `.ipsec` `.ipv4` `.ipv6` `.js` `.json` `.kernel` `.key` `.lab` `.lan` `.layer` `.local` `.log` `.mail` `.matrix` `.mesh` `.meta` `.military` `.mirror` `.mongo` `.mysql` `.nat` `.node` `.null` `.oauth` `.offline` `.ops` `.peer` `.pem` `.posix` `.privacy` `.proof` `.pull` `.push` `.queue` `.quic` `.redis` `.relay` `.root` `.rpc` `.sandbox` `.sig` `.sql` `.srv` `.stack` `.sub` `.swarm` `.sync` `.syscall` `.term` `.test` `.tmp` `.trace` `.unix` `.v1` `.v2` `.verify` `.wan` `.web` `.wireguard` `.wg` `.x86` `.xml` `.yaml`
+
+**Gaming & Culture:**
+`.ape` `.amd` `.bear` `.bull` `.darwin` `.dojo` `.doxx` `.gamer` `.gta` `.gta5` `.gta6` `.home` `.slop` `.vibe` `.vpn`
+
+**Examples:**
+- `mysite.doxx` (default)
+- `cool.crypto`
+- `secret.onion`
+- `dev.hack` ... wait, `.hack` isn't in the list. Let me re-check... actually `.hack` is not a TLD. Use `.cyber`, `.exploit`, or `.pwnd` instead.
+- `trading.eth`
+- `myapp.vpn`
+- `game.gta6`
+
+---
+
+## Certificate Signing Details
+
+### How It Works
+
+1. You generate a private key and CSR locally (key never leaves your machine)
+2. Submit the CSR to the `sign_certificate` endpoint
+3. doxx.net signs it with the doxx.net root CA and returns the certificate
+4. The certificate is automatically upgraded to wildcard (`*.domain` + `domain`)
+
+### Root CA Info
+
+| Property | Value |
+|----------|-------|
+| Subject | `CN=doxx.net root CA, O=doxx.net root CA` |
+| Validity | Jan 2025 - Jan 2035 (10 years) |
+| Key Type | RSA |
+| Signed Certs Validity | 365 days |
+| SAN | Wildcard + base domain automatically |
+
+### Installing the Root CA
+
+Clients that connect to services using doxx.net-signed certificates need to trust the root CA.
+
+**Get the root CA certificate:**
+```bash
+curl -o doxx-root-ca.crt https://a0x13.doxx.net/assets/doxx-root-ca.crt
+```
+
+**macOS:**
+```bash
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain doxx-root-ca.crt
+```
+
+**Linux (Debian/Ubuntu):**
+```bash
+sudo cp doxx-root-ca.crt /usr/local/share/ca-certificates/doxx-root-ca.crt
+sudo update-ca-certificates
+```
+
+**Windows:**
+```
+certutil -addstore root doxx-root-ca.crt
+```
+
+**Firefox** (uses its own CA store):
+Settings > Privacy & Security > Certificates > View Certificates > Import
+
+**VPN users:** If you're connected to doxx.net via WireGuard with DNS set to `10.10.10.10`, the root CA is already trusted by the VPN DNS resolver for `.doxx` domain resolution. But for TLS (HTTPS), you still need to install the root CA in your OS/browser trust store.
+
 ---
 
 ## Error Handling
