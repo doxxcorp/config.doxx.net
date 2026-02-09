@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/doxxcorp/style/main/logo-png/imagotype-white/imagotype-white-512.png" alt="doxx.net" width="300">
+  <img src="https://raw.githubusercontent.com/doxx/doxx.net-style/main/logo-png/imagotype-white/imagotype-white-512.png" alt="doxx.net" width="300">
 </p>
 
 <p align="center">
