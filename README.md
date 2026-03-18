@@ -33,6 +33,51 @@
 
 ---
 
+## Detailed Endpoint Reference
+
+For comprehensive parameter tables, response schemas, error handling, and examples per endpoint category, see the detailed docs:
+
+| Section | Description |
+|---------|-------------|
+| [Authentication](docs/authentication.md) | Token types, X-Auth encryption, subscription requirements |
+| [Servers](docs/endpoints/servers.md) | List servers, TLDs, blocklist options |
+| [Tunnels](docs/endpoints/tunnels.md) | Create, list, update, delete tunnels, WireGuard config, connection options |
+| [Domains](docs/endpoints/domains.md) | Register, import, link profiles to domains |
+| [DNS Records](docs/endpoints/dns-records.md) | CRUD for A, AAAA, CNAME, TXT, MX, SRV, PTR, NS records, certificate signing |
+| [DNS Blocklists](docs/endpoints/dns-blocklists.md) | Subscriptions, whitelists, blacklists, public DNS hashes |
+| [Firewall](docs/endpoints/firewall.md) | Per-tunnel rules, Link All mesh mode |
+| [Proxy](docs/endpoints/proxy.md) | Geo-spoofing location, browser fingerprint, timezone |
+| [Devices](docs/endpoints/devices.md) | Device management, rename, delete |
+| [Saved Profiles](docs/endpoints/profiles.md) | WireGuard vs iOS profiles, static IPs, DNS hostnames |
+| [IP Addresses](docs/endpoints/addresses.md) | Static IPv4/IPv6, dedicated public IPs, assignment, rotation |
+| [Error Codes](docs/error-codes.md) | HTTP status codes, context field, extended error fields |
+
+## Response Format
+
+All API responses include a `context` field that describes the endpoint, its parameters, and what happened. This field is designed for AI agents and programmatic consumers to understand the API without external documentation.
+
+```json
+{
+  "status": "success",
+  "context": "servers: Lists available VPN servers with location, type, public key, and geographic region...",
+  "servers": [...]
+}
+```
+
+Error responses include what went wrong and how to fix it:
+
+```json
+{
+  "status": "error",
+  "message": "A subscription is required to create tunnels",
+  "context": "create_tunnel: Creates a new WireGuard tunnel... Error: subscription required. Fix: subscribe at...",
+  "error_code": "feature_required",
+  "upgrade_url": "https://doxx.net/ops/account/subscription"
+}
+```
+
+---
+
 ## Authentication
 
 doxx.net uses token-based auth. No usernames, no passwords, no email.
@@ -272,7 +317,7 @@ Register domains under any of these top-level domains. Default is `.doxx` if you
 - `mysite.doxx` (default)
 - `cool.crypto`
 - `secret.onion`
-- `dev.hack` ... wait, `.hack` isn't in the list. Let me re-check... actually `.hack` is not a TLD. Use `.cyber`, `.exploit`, or `.pwnd` instead.
+- `dev.cyber`
 - `trading.eth`
 - `myapp.vpn`
 - `game.gta6`
@@ -592,25 +637,6 @@ curl -s -X POST $API -d "delete_account=1&token=$TOKEN"
 
 ```json
 {"status": "success", "message": "Account deleted successfully"}
-```
-
-### `merge_account`
-
-| Parameter | Required |
-|-----------|----------|
-| `token` | Yes (destination) |
-| `source_token` | Yes (to merge from) |
-
-```json
-{
-  "status": "success",
-  "new_token": "master_token",
-  "master_user_id": 4,
-  "merged_tunnels": 3,
-  "merged_whitelist": 5,
-  "merged_blacklist": 2,
-  "message": "Account merged successfully. Please save the new token."
-}
 ```
 
 ---
