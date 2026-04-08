@@ -2,17 +2,40 @@
 
 ## Overview
 
-The doxx.net Config API uses token-based authentication. There are no usernames, passwords, or email addresses. All API calls authenticate using one of three token types, passed as a form parameter or encrypted header.
+The doxx.net Config API uses token-based authentication. There are no usernames, passwords, or email addresses. Each account can have **multiple auth tokens** with different roles, optional expiration, and security restrictions (IP allowlists, country allowlists, tunnel scoping).
 
 ## Token Types
 
 | Token | Format | Purpose | How to Obtain |
 |-------|--------|---------|---------------|
-| **Auth Token** | ~43 character base64 string | Identifies your account. Used for all authenticated API calls. | Created by a human at [a0x13.doxx.net](https://a0x13.doxx.net) via proof-of-work challenge |
+| **Auth Token** | ~43 character base64 string | Identifies your account. Used for all authenticated API calls. Each account can have multiple tokens with different roles. | Primary token created at [a0x13.doxx.net](https://a0x13.doxx.net); additional tokens via `create_token` API |
 | **Tunnel Token** | ~43 character base64 string | Identifies a specific VPN tunnel within your account. | Returned by `create_tunnel` or `list_tunnels` |
 | **POW Token** | Variable-length string | One-time human verification token. Proves a real person created the account. | Returned by completing the DOXX POW challenge |
 
-**You cannot create accounts via API.** A human must visit [a0x13.doxx.net](https://a0x13.doxx.net), complete the proof-of-work challenge, and accept the Terms of Service. The auth token from that process is then used for all subsequent API calls.
+**You cannot create accounts via API.** A human must visit [a0x13.doxx.net](https://a0x13.doxx.net), complete the proof-of-work challenge, and accept the Terms of Service. The auth token from that process is then used for all subsequent API calls. Additional tokens can be created via the [Token Management](endpoints/tokens.md) API.
+
+## Roles
+
+Each auth token has a role that determines what it can do:
+
+| Role | Permissions |
+|------|------------|
+| **admin** | Full access: account, billing, tunnels, DNS, firewall, token management |
+| **net-admin** | Create/delete tunnels, manage DNS, change configs, firewall. No billing or account changes. |
+| **read-only** | View tunnels, stats, alerts, DNS records. No modifications. |
+
+Roles are hierarchical: `admin` includes all `net-admin` permissions, which includes all `read-only` permissions. The primary token created at account signup is always `admin`.
+
+## Security Restrictions
+
+Tokens can be restricted with:
+
+- **IP Fence** - allowlist of IP addresses or CIDRs the token can be used from
+- **Geo Fence** - allowlist of countries the token can be used from (GeoIP lookup)
+- **Tunnel Scope** - restrict the token to specific tunnels on the account
+- **Expiration** - optional expiry time after which the token stops working
+
+See [Token Management](endpoints/tokens.md) for details on configuring these restrictions.
 
 ## Passing Your Token
 
@@ -106,6 +129,56 @@ HTTP 401
 }
 ```
 HTTP 403
+
+### IP Not Allowed
+
+When the client IP does not match any CIDR in the token's IP fence:
+
+```json
+{
+  "status": "error",
+  "message": "ip_not_allowed"
+}
+```
+HTTP 403
+
+### Country Not Allowed
+
+When the client's country (via GeoIP) is not in the token's country allowlist:
+
+```json
+{
+  "status": "error",
+  "message": "country_not_allowed"
+}
+```
+HTTP 403
+
+If the server cannot determine the client's country, the request is allowed by default.
+
+### Token Expired
+
+When the token's `expires_at` is in the past:
+
+```json
+{
+  "status": "error",
+  "message": "Invalid authentication token"
+}
+```
+HTTP 401. Expired tokens can be reactivated by an admin token using `update_token` to extend the expiry.
+
+### Token Revoked
+
+When the token has been revoked via `revoke_token` or account recovery:
+
+```json
+{
+  "status": "error",
+  "message": "Invalid authentication token"
+}
+```
+HTTP 401. Revoked tokens cannot be reactivated.
 
 ### Seat Limit Reached
 

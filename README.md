@@ -43,7 +43,8 @@ For comprehensive parameter tables, response schemas, error handling, and exampl
 
 | Section | Description |
 |---------|-------------|
-| [Authentication](docs/authentication.md) | Token types, X-Auth encryption, subscription requirements |
+| [Authentication](docs/authentication.md) | Token types, roles, X-Auth encryption, security restrictions |
+| [Token Management](docs/endpoints/tokens.md) | Multi-token CRUD, geo/IP fencing, tunnel scoping, expiration |
 | [Servers](docs/endpoints/servers.md) | List servers, TLDs, blocklist options |
 | [Tunnels](docs/endpoints/tunnels.md) | Create, list, update, delete tunnels, WireGuard config, connection options |
 | [Domains](docs/endpoints/domains.md) | Register, import, link profiles to domains |
