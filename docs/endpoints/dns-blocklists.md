@@ -94,6 +94,175 @@ curl -s -X POST https://config.doxx.net/v1/ \
 
 ---
 
+## `dns_get_all_tunnel_configs`
+
+Returns the complete DNS blocking configuration for ALL tunnels owned by the authenticated user in a single call. Eliminates the need to call `dns_get_tunnel_config` once per tunnel.
+
+### Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `token` | Yes | Auth token |
+
+### Example
+
+```bash
+curl -s -X POST https://config.doxx.net/v1/ \
+  -d "dns_get_all_tunnel_configs=1&token=$TOKEN" | jq .
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "base_protections": ["malware_filter", "phishing_filter"],
+  "tunnel_count": 3,
+  "tunnels": [
+    {
+      "tunnel_token": "abc...",
+      "name": "Firestick",
+      "server": "wireguard.lon.uk.doxx.net",
+      "dns_blocking_enabled": true,
+      "snarf_dns": true,
+      "block_doh_dot": true,
+      "subscriptions": [
+        {"blocklist_name": "adguard", "enabled": 1},
+        {"blocklist_name": "stevenblack", "enabled": 1}
+      ],
+      "whitelists": [
+        {"domain": "example.com", "reason": null, "blocked_by": null, "expires_at": null}
+      ],
+      "blacklists": [
+        {"domain": "evil.com", "reason": "manual block"}
+      ]
+    }
+  ]
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `base_protections` | array | Mandatory protection lists (always active, cannot be disabled) |
+| `tunnel_count` | int | Number of tunnels returned |
+| `tunnels[].dns_blocking_enabled` | bool | Whether DNS blocking is active on this tunnel |
+| `tunnels[].snarf_dns` | bool | Whether DNS queries are intercepted/redirected |
+| `tunnels[].block_doh_dot` | bool | Whether DoH/DoT bypass protection is enabled |
+| `tunnels[].subscriptions` | array | Blocklist subscriptions and their enabled state |
+| `tunnels[].whitelists` | array | Custom domains that bypass all blocking |
+| `tunnels[].blacklists` | array | Custom domains that are always blocked |
+
+---
+
+## `dns_get_user_custom_rules`
+
+Returns all custom blacklist and whitelist entries across all tunnels owned by the authenticated user. Supports an optional domain filter.
+
+### Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `token` | Yes | Auth token |
+| `domain` | No | Filter results by domain substring match |
+
+### Example
+
+```bash
+curl -s -X POST https://config.doxx.net/v1/ \
+  -d "dns_get_user_custom_rules=1&token=$TOKEN" | jq .
+```
+
+### Example with domain filter
+
+```bash
+curl -s -X POST https://config.doxx.net/v1/ \
+  -d "dns_get_user_custom_rules=1&token=$TOKEN&domain=example.com" | jq .
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "blacklists": [
+    {
+      "tunnel_token": "abc...",
+      "tunnel_name": "Firestick",
+      "domain": "evil.com",
+      "reason": null,
+      "created_at": "2026-04-09 10:19:37"
+    }
+  ],
+  "whitelists": [
+    {
+      "tunnel_token": "def...",
+      "tunnel_name": "Macbook",
+      "domain": "example.com",
+      "reason": "false positive",
+      "blocked_by": "hagezi_pro",
+      "expires_at": null,
+      "created_at": "2026-04-08 15:30:00"
+    }
+  ],
+  "blacklist_count": 1,
+  "whitelist_count": 1
+}
+```
+
+---
+
+## `dns_get_user_subscriptions`
+
+Returns all blocklist subscriptions across all tunnels owned by the authenticated user, with a per-blocklist summary showing how many tunnels have each list enabled vs disabled.
+
+### Parameters
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `token` | Yes | Auth token |
+
+### Example
+
+```bash
+curl -s -X POST https://config.doxx.net/v1/ \
+  -d "dns_get_user_subscriptions=1&token=$TOKEN" | jq .
+```
+
+### Response
+
+```json
+{
+  "status": "success",
+  "subscriptions": [
+    {
+      "tunnel_token": "abc...",
+      "tunnel_name": "Firestick",
+      "blocklist_name": "adguard",
+      "enabled": 1
+    }
+  ],
+  "summary": {
+    "adguard": {"enabled_count": 20, "disabled_count": 4},
+    "stevenblack": {"enabled_count": 24, "disabled_count": 0}
+  },
+  "tunnel_count": 24,
+  "subscription_count": 192
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `subscriptions` | array | Per-tunnel per-blocklist entries with enabled state |
+| `summary` | object | Per-blocklist rollup with enabled_count and disabled_count |
+| `tunnel_count` | int | Total tunnels owned by the user |
+| `subscription_count` | int | Total subscription entries returned |
+
+---
+
 ## `dns_set_subscription`
 
 Enables or disables a blocklist subscription on a tunnel.
