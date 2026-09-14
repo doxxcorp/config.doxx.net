@@ -1,6 +1,6 @@
 # Tunnels
 
-Tunnel endpoints manage VPN connections. Each tunnel gets a unique token, IP addresses (IPv4 and IPv6), and WireGuard keys. Creating tunnels requires a subscription with available seats.
+Tunnel endpoints manage encrypted tunnels. Each tunnel gets a unique token, IP addresses (IPv4 and IPv6), and WireGuard keys. Creating tunnels requires a subscription with available seats.
 
 ## Subscription and Seat Limits
 
@@ -287,7 +287,7 @@ Updates mobile app settings. Only provided parameters are changed.
 |-----------|----------|-------------|
 | `token` | Yes | Auth token |
 | `connect_on_startup` | No | `1` to auto-connect on app launch, `0` to disable |
-| `kill_switch` | No | `1` to block all traffic when VPN disconnects, `0` to allow |
+| `kill_switch` | No | `1` to block all traffic when the tunnel disconnects, `0` to allow |
 | `proxy_enabled` | No | `1` to enable geo-spoofing proxy, `0` to disable |
 | `onion_enabled` | No | `1` to route traffic through Tor, `0` to disable |
 

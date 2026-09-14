@@ -6,7 +6,7 @@ Address management endpoints handle IP address allocation, assignment to profile
 
 | Type | Description |
 |------|-------------|
-| `static_private` | Private IPv4 address from the 10.x.x.x range. Assigned per-site. Used for VPN tunnel connectivity. |
+| `static_private` | Private IPv4 address from the 10.x.x.x range. Assigned per-site. Used for tunnel connectivity. |
 | `static_public` | Dedicated public IPv4 address. Requires a Pro subscription. Used for services that need a fixed internet-facing IP. |
 | `static_ipv6` | IPv6 address. Assigned per-site alongside IPv4 allocations. |
 

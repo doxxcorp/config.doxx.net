@@ -9,7 +9,7 @@ The doxx.net Config API uses token-based authentication. There are no usernames,
 | Token | Format | Purpose | How to Obtain |
 |-------|--------|---------|---------------|
 | **Auth Token** | ~43 character base64 string | Identifies your account. Used for all authenticated API calls. Each account can have multiple tokens with different roles. | Primary token created at [a0x13.doxx.net](https://a0x13.doxx.net); additional tokens via `create_token` API |
-| **Tunnel Token** | ~43 character base64 string | Identifies a specific VPN tunnel within your account. | Returned by `create_tunnel` or `list_tunnels` |
+| **Tunnel Token** | ~43 character base64 string | Identifies a specific tunnel within your account. | Returned by `create_tunnel` or `list_tunnels` |
 | **POW Token** | Variable-length string | One-time human verification token. Proves a real person created the account. | Returned by completing the DOXX POW challenge |
 
 **You cannot create accounts via API.** A human must visit [a0x13.doxx.net](https://a0x13.doxx.net), complete the proof-of-work challenge, and accept the Terms of Service. The auth token from that process is then used for all subsequent API calls. Additional tokens can be created via the [Token Management](endpoints/tokens.md) API.

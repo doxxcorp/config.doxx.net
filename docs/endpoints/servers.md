@@ -4,7 +4,7 @@ Server discovery endpoints. These do not require authentication.
 
 ## `servers`
 
-Returns the list of available VPN servers with their locations, public keys, and metadata.
+Returns the list of tunnel locations. Each entry is a doxx.net cluster on owned hardware (active-active nodes with per-packet failover, thousands of individual server keys rotating in RAM) addressed by one hostname. There is no per-machine view: a location is the unit you connect to, and the cluster behind it is doxx.net's to run. Results are cached for 5 minutes.
 
 **Authentication:** None required.
 
@@ -13,6 +13,7 @@ Returns the list of available VPN servers with their locations, public keys, and
 | Parameter | Required | Description |
 |-----------|----------|-------------|
 | `servers` | Yes | Set to `1` |
+| `type` | No | Filter by tunnel type (e.g. `wireguard`) |
 
 ### Example
 
@@ -27,16 +28,18 @@ curl -s -X POST https://config.doxx.net/v1/ -d "servers=1" | jq .
   "status": "success",
   "servers": [
     {
-      "server_name": "wireguard.mia.us.doxx.net",
-      "location": "Miami, FL",
-      "description": "US Southeast",
+      "server_name": "wireguard.zrh.eu.doxx.net",
+      "hostname": "wireguard.zrh.eu.doxx.net",
+      "location": "Zurich, Switzerland",
+      "description": "WireGuard Server for doxx.net",
       "type": "wireguard",
-      "public_key": "abc123...",
-      "best_for": "US East Coast",
-      "operator": "doxx.net",
-      "bg_image": "miami.jpg",
-      "flag_image": "us.svg",
-      "continent": "NA"
+      "public_key": "base64...",
+      "best_for": "Swiss privacy laws (world's strongest), Banking and financial privacy, Neutral jurisdiction.",
+      "operator": "Doxx Communications Europe GmbH of Zurich Switzerland",
+      "bg_image": "wireguard.zrh.eu.doxx.net",
+      "flag_image": "ch",
+      "continent": "Europe",
+      "created_at": "2026-09-07T00:00:00Z"
     }
   ]
 }
@@ -46,22 +49,24 @@ curl -s -X POST https://config.doxx.net/v1/ -d "servers=1" | jq .
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `server_name` | string | Hostname used when creating tunnels. Pass this to `create_tunnel` as the `server` parameter. |
-| `location` | string | Human-readable city and region |
-| `description` | string | Short description of the server's coverage area |
-| `type` | string | Server type (currently always `wireguard`) |
-| `public_key` | string | WireGuard public key for this server |
+| `server_name` | string | The location's hostname. Pass this to `create_tunnel` as the `server` parameter and to `lease_public_ipv4` / `create_saved_profile` as `server`. |
+| `hostname` | string | Mirrors `server_name`. A location is a cluster, so there is no single physical hostname to expose. |
+| `location` | string | Human-readable city plus region or country |
+| `description` | string | Static label, not location-specific |
+| `type` | string | Tunnel type (currently always `wireguard`) |
+| `public_key` | string | Legacy fleet bootstrap key, kept for older clients. Do not build configs from it: `create_tunnel` and `wireguard` hand each tunnel its own server key from the location's rotating pool. |
 | `best_for` | string | Suggested use case or geographic affinity |
-| `operator` | string | Entity operating the server |
+| `operator` | string | Legal entity operating the location |
 | `bg_image` | string | Background image filename for UI rendering |
-| `flag_image` | string | Country flag image filename |
-| `continent` | string | Two-letter continent code (`NA`, `EU`, `AS`, etc.) |
+| `flag_image` | string | Lowercase country code for the flag asset (e.g. `us`, `ch`) |
+| `continent` | string | Continent name as displayed (`North America`, `Europe`, `Asia Pacific`, ...). Apps build their continent filter from this value. |
+| `created_at` | string | RFC 3339 timestamp of the location's earliest record |
 
 ---
 
 ## `list_tlds`
 
-Returns all available top-level domains for domain registration. 196 TLDs are available across categories including crypto, hacking, tech, gaming, and single-letter domains.
+Returns all available top-level domains for domain registration, across categories including crypto, hacking, tech, gaming, and single-letter domains. The response `count` is the live total.
 
 **Authentication:** None required.
 

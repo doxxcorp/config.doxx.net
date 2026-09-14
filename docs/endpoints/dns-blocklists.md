@@ -392,7 +392,7 @@ Removes a domain from the tunnel's custom blacklist.
 
 ## Secure DNS (DoH/DoT) Sharing
 
-These endpoints create personalized DNS-over-HTTPS and DNS-over-TLS endpoints that mirror a tunnel's DNS blocking configuration. This lets you use your blocking settings on devices that are not connected to the VPN.
+These endpoints create personalized DNS-over-HTTPS and DNS-over-TLS endpoints that mirror a tunnel's DNS blocking configuration. This lets you use your blocking settings on devices that are not connected to a tunnel.
 
 ### `public_dns_list_hashes`
 

@@ -19,7 +19,9 @@
 
 ## What is doxx.net?
 
-doxx.net is a Virtual Networking Platform (VNP) built from the ground up for user rights, freedom of speech, flexibility, and privacy. Unlike traditional VPNs that simply tunnel traffic, doxx.net provides a complete networking platform with private mesh networking between devices, custom domain registration with 196 TLDs, authoritative DNS hosting, DNS threat blocking, geo-spoofing proxy, dedicated static IPs, certificate signing, and device-to-device firewall rules. Every component is designed with privacy as a core principle: accounts require no email or personal data, authentication is token-based, and the platform operates its own global DNS infrastructure independent of ICANN.
+doxx.net is an Agentic Defined Network (ADN) built from the ground up for user rights, freedom of speech, flexibility, and privacy, and built to be operated by agents, human or AI, through this self-documenting API. It is a complete network, not a legacy provider renting servers to route traffic through an exit node: encrypted tunnels, private mesh networking between devices, custom domain registration under doxx.net's own TLDs, authoritative DNS hosting, DNS threat blocking, geo-spoofing proxy, dedicated static IPs, certificate signing, and device-to-device firewall rules.
+
+Everything runs on hardware doxx.net owns, on its own IP space (AS16740) and routing, under its own security policy. Not leased servers at hosting providers that also monitor the wire: our equipment, our network stack, our policy, end to end. Locations are full clusters with per-packet failover holding thousands of individual server keys rotating in RAM, not individual servers. Every component is designed with privacy as a core principle: accounts require no email or personal data, authentication is token-based, and the platform operates its own global DNS infrastructure independent of ICANN.
 
 ## Overview
 
@@ -64,7 +66,7 @@ All API responses include a `context` field that describes the endpoint, its par
 ```json
 {
   "status": "success",
-  "context": "servers: Lists available VPN servers with location, type, public key, and geographic region...",
+  "context": "servers: Lists tunnel locations. Each entry is a doxx.net cluster on owned hardware (active-active nodes with per-packet failover, thousands of individual server keys rotating in RAM) addressed by one hostname...",
   "servers": [...]
 }
 ```
@@ -90,7 +92,7 @@ doxx.net uses token-based auth. No usernames, no passwords, no email.
 | Token Type | What It Is | How You Get It |
 |------------|-----------|----------------|
 | **Auth Token** | Your account identity. ~43 char base64 string. | Human creates account at [a0x13.doxx.net](https://a0x13.doxx.net) |
-| **Tunnel Token** | Identifies a specific VPN tunnel. | Returned by `list_tunnels` or `create_tunnel` |
+| **Tunnel Token** | Identifies a specific tunnel. | Returned by `list_tunnels` or `create_tunnel` |
 | **POW Token** | One-time human verification. | DOXX POW challenge at account creation |
 
 **You cannot create accounts via API.** A human must visit [a0x13.doxx.net](https://a0x13.doxx.net), complete the proof-of-work challenge, and accept the Terms of Service. The auth token from that process is then used for all API calls.
@@ -113,7 +115,7 @@ Endpoints that require a specific role return HTTP 403 with `{"status":"error","
 
 ## Common Workflows
 
-### Workflow 1: Set Up a VPN Tunnel
+### Workflow 1: Set Up a Tunnel
 
 ```bash
 TOKEN="your_auth_token_here"
@@ -304,15 +306,15 @@ dig A $DOMAIN @a.root-dx.net +short
 # YOUR_SERVER_IP
 ```
 
-**Important:** doxx.net TLS certificates are signed by the doxx.net root CA, not a public CA like Let's Encrypt. Clients connecting to your service need the doxx.net root CA installed in their trust store. VPN users on doxx.net already have it. For non-VPN users, distribute the root CA cert or use it for internal/development services.
+**Important:** doxx.net TLS certificates are signed by the doxx.net root CA, not a public CA like Let's Encrypt. Clients connecting to your service need the doxx.net root CA installed in their trust store. Devices connected through a doxx.net tunnel already have it. For everyone else, distribute the root CA cert or use it for internal/development services.
 
-**Scoped trust:** the root CA is name constrained (RFC 5280) to the doxx namespace: the 196 doxx TLDs plus doxx-owned public domains. Installing it does NOT let doxx.net (or anyone holding the CA key) issue trusted certificates for domains outside that namespace: a cert for `google.com` signed by this CA is rejected by every modern browser and OS. This also means `sign_certificate` only works for domains under doxx TLDs; imported public domains (.com etc.) must use a public CA like Let's Encrypt.
+**Scoped trust:** the root CA is name constrained (RFC 5280) to the doxx namespace: the doxx TLDs (`list_tlds` returns the current set) plus doxx-owned public domains. Installing it does NOT let doxx.net (or anyone holding the CA key) issue trusted certificates for domains outside that namespace: a cert for `google.com` signed by this CA is rejected by every modern browser and OS. This also means `sign_certificate` only works for domains under doxx TLDs; imported public domains (.com etc.) must use a public CA like Let's Encrypt.
 
 ---
 
-## Available TLDs (196)
+## Available TLDs
 
-Register domains under any of these top-level domains. Default is `.doxx` if you don't specify one.
+Register domains under any of these top-level domains. Default is `.doxx` if you don't specify one. `list_tlds` (no auth) returns the live set with categories; the groups below are a snapshot.
 
 **Single Letters (25):**
 `.b` `.c` `.d` `.e` `.f` `.g` `.h` `.i` `.j` `.k` `.l` `.m` `.n` `.o` `.p` `.q` `.r` `.s` `.t` `.u` `.v` `.w` `.x` `.y` `.z`
@@ -359,7 +361,7 @@ Register domains under any of these top-level domains. Default is `.doxx` if you
 | Subject | `CN=doxx.net root CA 2026, O=doxx.net` |
 | Validity | Aug 2026 - Aug 2036 (10 years) |
 | Key Type | RSA 4096 |
-| Name Constraints | 196 doxx TLDs + doxx-owned public domains (critical, RFC 5280) |
+| Name Constraints | All doxx TLDs (`list_tlds`) + doxx-owned public domains (critical, RFC 5280) |
 | Signed Certs Validity | 825 days (the maximum Apple platforms accept for TLS server certs) |
 | SAN | Wildcard + base domain automatically |
 
@@ -398,17 +400,17 @@ certutil -addstore root doxx-root-ca.crt
 **Firefox** (uses its own CA store):
 Settings > Privacy & Security > Certificates > View Certificates > Import (delete the old "doxx.net root CA" entry if listed)
 
-**VPN users:** If you're connected to doxx.net via WireGuard with DNS set to `10.10.10.10`, the root CA is already trusted by the VPN DNS resolver for `.doxx` domain resolution. But for TLS (HTTPS), you still need to install the root CA in your OS/browser trust store.
+**On a tunnel:** If you're connected to doxx.net via WireGuard with DNS set to `10.10.10.10`, `.doxx` domains already resolve through the tunnel's DNS resolver. But for TLS (HTTPS), you still need to install the root CA in your OS/browser trust store.
 
 ---
 
 ## DNS Infrastructure
 
-doxx.net runs its own global DNS system. Understanding it is key to using domains and the VPN correctly.
+doxx.net runs its own global DNS system. Understanding it is key to using domains and the tunnel correctly.
 
 ### Three DNS Layers
 
-#### 1. VPN Recursive DNS (internal, VPN-only)
+#### 1. Tunnel Recursive DNS (internal, tunnel-only)
 
 Only accessible when connected via WireGuard. Provides personalized DNS blocking, DNSSEC validation, and resolves all `.doxx` ecosystem TLDs.
 
@@ -421,7 +423,7 @@ These are set automatically when you use the WireGuard config from the `wireguar
 
 #### 2. Public Recursive DNS (anyone on the internet)
 
-Resolves both standard internet domains AND all doxx.net ecosystem TLDs. Available to anyone, not just VPN users.
+Resolves both standard internet domains AND all doxx.net ecosystem TLDs. Available to anyone, not just devices on a tunnel.
 
 | Address | Protocol |
 |---------|----------|
@@ -433,7 +435,7 @@ Resolves both standard internet domains AND all doxx.net ecosystem TLDs. Availab
 | `doxx.net:853` | DoT (DNS-over-TLS) |
 
 ```bash
-# Resolve a .doxx domain from anywhere on the internet (no VPN needed)
+# Resolve a .doxx domain from anywhere on the internet (no tunnel needed)
 dig A mysite.doxx @207.207.200.200 +short
 
 # Or use DoH
@@ -450,9 +452,9 @@ These are the nameservers you point your domain registrar to when importing exte
 | `a.root-dx.com` | `207.207.200.53`, `207.207.201.53` | `2602:f5c1::53`, `2a11:46c0::53` |
 | `a.root-dx.org` | `207.207.200.53`, `207.207.201.53` | `2602:f5c1::53`, `2a11:46c0::53` |
 
-### Resolving .doxx Domains Without the VPN
+### Resolving .doxx Domains Without a Tunnel
 
-You don't need to be on the VPN to resolve `.doxx`, `.crypto`, `.x`, or any doxx.net TLD. Use the public recursive DNS:
+You don't need to be on a tunnel to resolve `.doxx`, `.crypto`, `.x`, or any doxx.net TLD. Use the public recursive DNS:
 
 ```bash
 # Method 1: Direct DNS query
@@ -470,7 +472,7 @@ curl -s -X POST https://config.doxx.net/v1/ \
 # Returns: {"host_hash": "gl6nqcbyhsau", "doh_url": "https://gl6nqcbyhsau.sdns.doxx.net/dns-query"}
 
 # Then configure your browser/OS to use that DoH URL
-# This gives you your VPN's DNS blocking settings without being on the VPN
+# This gives you your tunnel's DNS blocking settings without being on the tunnel
 
 # Method 4: In your application code
 # Just point DNS queries to 207.207.200.200 for any .doxx domain resolution
@@ -504,7 +506,7 @@ dig A mysite.doxx @a.root-dx.org +short
 # Check via public recursive DNS
 dig A mysite.doxx @207.207.200.200 +short
 
-# Check via VPN DNS (must be connected)
+# Check via tunnel DNS (must be connected)
 dig A mysite.doxx @10.10.10.10 +short
 
 # Check SOA (zone exists?)
@@ -516,7 +518,7 @@ dig ANY mysite.doxx @a.root-dx.net
 
 ### Secure DNS (DoH/DoT) with Personalized Blocking
 
-Create a Secure DNS hash to get your tunnel's DNS blocking settings available via DoH/DoT, usable from any device (no VPN required).
+Create a Secure DNS hash to get your tunnel's DNS blocking settings available via DoH/DoT, usable from any device (no tunnel required).
 
 ```bash
 # Create a Secure DNS hash
@@ -1044,7 +1046,7 @@ Same parameters as `firewall_rule_add`.
 | `token` | Yes | Auth token |
 | `domain` | Yes | e.g., `mysite.doxx` or `mysite` (defaults to `.doxx`) |
 
-196 TLDs available: `.doxx`, `.crypto`, `.vpn`, `.hack`, `.dao`, `.eth`, `.dns`, `.tor`, `.onion`, `.cyber`, and more.
+TLDs available include `.doxx`, `.crypto`, `.vpn`, `.hack`, `.dao`, `.eth`, `.dns`, `.tor`, `.onion`, `.cyber`, and more; `list_tlds` returns the full current set.
 
 ```json
 {"status": "success", "message": "Domain registered successfully"}

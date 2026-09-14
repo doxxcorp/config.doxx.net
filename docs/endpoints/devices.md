@@ -1,6 +1,6 @@
 # Devices
 
-Device management endpoints. Devices represent physical or virtual machines that have connected through the VPN. Each device is identified by a unique hash and can have multiple tunnels associated with it.
+Device management endpoints. Devices represent physical or virtual machines that have connected through a tunnel. Each device is identified by a unique hash and can have multiple tunnels associated with it.
 
 ---
 
