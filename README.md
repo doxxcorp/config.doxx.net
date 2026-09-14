@@ -704,13 +704,14 @@ curl -s -X POST $API -d "servers=1"
       "bg_image": "wireguard.zrh.eu.doxx.net",
       "flag_image": "ch",
       "continent": "Europe",
-      "created_at": "2026-09-07T00:00:00Z"
+      "created_at": "2026-09-07T00:00:00Z",
+      "cluster_key_count": 96
     }
   ]
 }
 ```
 
-`public_key` is always empty: location keys are not published. Each tunnel receives its own server key from `create_tunnel` or `wireguard`. Full field reference: [docs/endpoints/servers.md](docs/endpoints/servers.md).
+`public_key` is always empty: location keys are not published. Each tunnel receives its own server key from `create_tunnel` or `wireguard`. `cluster_key_count` is the live number of server identities the cluster behind that location currently answers for. Full field reference: [docs/endpoints/servers.md](docs/endpoints/servers.md).
 
 ---
 

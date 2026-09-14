@@ -4,7 +4,7 @@ Server discovery endpoints. These do not require authentication.
 
 ## `servers`
 
-Returns the list of tunnel locations. Each entry is a doxx.net cluster on owned hardware (active-active nodes with per-packet failover, thousands of individual server keys rotating in RAM) addressed by one hostname. There is no per-machine view: a location is the unit you connect to, and the cluster behind it is doxx.net's to run. Results are cached for 5 minutes.
+Returns the list of tunnel locations. Each entry is a doxx.net cluster on owned hardware (active-active nodes with per-packet failover) addressed by one hostname. There is no per-machine view: a location is the unit you connect to, and the cluster behind it is doxx.net's to run. `cluster_key_count` is the live number of concurrently valid server identities that cluster answers for (rotating derived keys held in RAM), which is why one location behaves like that many individual servers. Results are cached for 5 minutes.
 
 **Authentication:** None required.
 
@@ -39,7 +39,8 @@ curl -s -X POST https://config.doxx.net/v1/ -d "servers=1" | jq .
       "bg_image": "wireguard.zrh.eu.doxx.net",
       "flag_image": "ch",
       "continent": "Europe",
-      "created_at": "2026-09-07T00:00:00Z"
+      "created_at": "2026-09-07T00:00:00Z",
+      "cluster_key_count": 96
     }
   ]
 }
@@ -61,6 +62,7 @@ curl -s -X POST https://config.doxx.net/v1/ -d "servers=1" | jq .
 | `flag_image` | string | Lowercase country code for the flag asset (e.g. `us`, `ch`) |
 | `continent` | string | Continent name as displayed (`North America`, `Europe`, `Asia Pacific`, ...). Apps build their continent filter from this value. |
 | `created_at` | string | RFC 3339 timestamp of the location's earliest record |
+| `cluster_key_count` | int | Live count of concurrently valid server identities behind this location, read from the key pool at request time (rotating monthly epochs). Not a fixed number; it moves as epochs rotate. |
 
 ---
 
