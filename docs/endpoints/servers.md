@@ -33,7 +33,7 @@ curl -s -X POST https://config.doxx.net/v1/ -d "servers=1" | jq .
       "location": "Zurich, Switzerland",
       "description": "WireGuard Server for doxx.net",
       "type": "wireguard",
-      "public_key": "base64...",
+      "public_key": "",
       "best_for": "Swiss privacy laws (world's strongest), Banking and financial privacy, Neutral jurisdiction.",
       "operator": "Doxx Communications Europe GmbH of Zurich Switzerland",
       "bg_image": "wireguard.zrh.eu.doxx.net",
@@ -54,7 +54,7 @@ curl -s -X POST https://config.doxx.net/v1/ -d "servers=1" | jq .
 | `location` | string | Human-readable city plus region or country |
 | `description` | string | Static label, not location-specific |
 | `type` | string | Tunnel type (currently always `wireguard`) |
-| `public_key` | string | Legacy fleet bootstrap key, kept for older clients. Do not build configs from it: `create_tunnel` and `wireguard` hand each tunnel its own server key from the location's rotating pool. |
+| `public_key` | string | Always empty. Location keys are not published: a location is a cluster serving a pool of rotating server identities, and `create_tunnel` / `wireguard` hand each tunnel its own server key. The field exists only so older clients keep decoding. |
 | `best_for` | string | Suggested use case or geographic affinity |
 | `operator` | string | Legal entity operating the location |
 | `bg_image` | string | Background image filename for UI rendering |
