@@ -693,20 +693,24 @@ curl -s -X POST $API -d "servers=1"
   "status": "success",
   "servers": [
     {
-      "server_name": "wireguard.mia.us.doxx.net",
-      "location": "Miami, FL",
-      "description": "US Southeast",
+      "server_name": "wireguard.zrh.eu.doxx.net",
+      "hostname": "wireguard.zrh.eu.doxx.net",
+      "location": "Zurich, Switzerland",
+      "description": "WireGuard Server for doxx.net",
       "type": "wireguard",
-      "public_key": "abc123...",
-      "best_for": "US East Coast",
-      "operator": "doxx.net",
-      "bg_image": "miami.jpg",
-      "flag_image": "us.svg",
-      "continent": "NA"
+      "public_key": "",
+      "best_for": "Swiss privacy laws (world's strongest), Banking and financial privacy, Neutral jurisdiction.",
+      "operator": "Doxx Communications Europe GmbH of Zurich Switzerland",
+      "bg_image": "wireguard.zrh.eu.doxx.net",
+      "flag_image": "ch",
+      "continent": "Europe",
+      "created_at": "2026-09-07T00:00:00Z"
     }
   ]
 }
 ```
+
+`public_key` is always empty: location keys are not published. Each tunnel receives its own server key from `create_tunnel` or `wireguard`. Full field reference: [docs/endpoints/servers.md](docs/endpoints/servers.md).
 
 ---
 
