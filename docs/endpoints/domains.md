@@ -43,7 +43,7 @@ curl -s -X POST https://config.doxx.net/v1/ \
 
 ## `create_domain`
 
-Registers a new domain under one of the 196 available TLDs. If no TLD is specified, `.doxx` is used as the default.
+Registers a new domain under one of the available TLDs (`list_tlds` returns the current set). If no TLD is specified, `.doxx` is used as the default.
 
 ### Parameters
 
